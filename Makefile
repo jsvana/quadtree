@@ -23,4 +23,4 @@ test: $(L_PROG) $(Q_PROG)
 	./$(Q_PROG)
 
 clean:
-	rn -f $(L_PROG) $(Q_PROG) $(L_OBJS) $(Q_OBJS)
+	rm -f $(L_PROG) $(Q_PROG) $(L_OBJS) $(Q_OBJS)

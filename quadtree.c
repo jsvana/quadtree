@@ -206,7 +206,7 @@ static int quadtree_rect_contains(quadtree_rect *r, double x, double y) {
 		return FALSE;
 	}
 
-	return r->x <= x && r->x + r->h > x && r->y <= y && r->y + r->h > y;
+	return r->x <= x && r->x + r->h >= x && r->y <= y && r->y + r->h >= y;
 }
 
 static int quadtree_rect_contains_node(quadtree_rect *r, quadtree_node *qn) {
@@ -231,7 +231,7 @@ int quadtree_insert(quadtree *q, void *data, size_t size, double x, double y) {
 
 llist *quadtree_retrieve_node(quadtree *q, quadtree_node *qn,
 		quadtree_rect *r, llist *list) {
-	if (!qn || llist_is_empty(qn->points)) {
+	if (!qn) {
 		return list;
 	}
 

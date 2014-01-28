@@ -54,8 +54,19 @@ int main(int argc, char **argv) {
 	c = 'f';
 	ret = quadtree_insert(q, &c, sizeof(char), 23, 23);
 
-	quadtree_node *root = q->root;
-	printNode(root);
+	// Should be d, e, f
+	quadtree_rect r;
+	r.x = 0;
+	r.w = 25;
+	r.y = 12.5;
+	r.h = 12.5;
+	llist *results = quadtree_retrieve(q, &r);
+
+	llist_node *n = results->head->inext;
+	while (n && n != results->tail) {
+		printf("val: %c\n", *(char *)((quadtree_data *)n->data)->data);
+		n = n->inext;
+	}
 
 	quadtree_free(q);
 	return 0;

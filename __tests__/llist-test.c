@@ -39,7 +39,6 @@ int main(int argc, char **argv) {
 	llist_add_to_back(l2, &i, sizeof(int));
 	assert(*(int *)llist_last(l2) == 6);
 
-	llist_iter_prep(l);
 	llist_append(l, l2);
 	llist_node *n = llist_iter(l);
 	assert(n != NULL);

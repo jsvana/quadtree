@@ -85,7 +85,9 @@ void llist_add_to_front(llist *l, void *data, size_t size) {
 	llist_node *next = l->head->next;
 	next->prev = ln;
 	ln->next = next;
+	ln->inext = next;
 	l->head->next = ln;
+	l->head->inext = ln;
 	ln->prev = l->head;
 
 	++l->size;
@@ -124,13 +126,6 @@ void llist_append(llist *dest, llist *other) {
 
 	llist_node *ln = dest->tail->prev;
 	ln->inext = other->head->next;
-	ln = ln->inext;
-	while (ln && ln != other->tail) {
-		if (ln->next != other->tail) {
-			ln->inext = ln->next;
-		}
-		ln = ln->inext;
-	}
 }
 
 void *llist_first(llist *l) {
