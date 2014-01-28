@@ -49,10 +49,10 @@ struct quadtree {
 	int size;
 };
 
-quadtree *quadtree_create();
+quadtree *quadtree_create(double x, double y, double w, double h);
 
 int quadtree_insert(quadtree *q, void *data, size_t size, double x, double y);
 
-//quadtree_point *quadtree_retrieve(quadtree *q, )
+llist *quadtree_retrieve(quadtree *q, quadtree_rect *r);
 
 void quadtree_free(quadtree *q);
