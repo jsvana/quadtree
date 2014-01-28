@@ -30,6 +30,10 @@ static quadtree_data *quadtree_data_create(void *data, size_t size, double x,
 	return qd;
 }
 
+static int quadtree_data_same_location(quadtree_data *d1, double x, double y) {
+	return d1->x == x && d1->y == y;
+}
+
 static quadtree_node *quadtree_node_create() {
 	quadtree_node *qn = malloc(sizeof(quadtree_node));
 	if (!qn) {
@@ -56,7 +60,19 @@ static quadtree_node *quadtree_node_create() {
 	return qn;
 }
 
-quadtree *quadtree_create() {
+void quadtree_node_set_bounds(quadtree_node *qn, double x, double y, double w,
+		double h) {
+	if (!qn) {
+		return;
+	}
+
+	qn->bounds.x = x;
+	qn->bounds.y = y;
+	qn->bounds.w = w;
+	qn->bounds.h = h;
+}
+
+quadtree *quadtree_create(double x, double y, double w, double h) {
 	quadtree *q = malloc(sizeof(quadtree));
 	if (!q) {
 		return NULL;
@@ -68,7 +84,38 @@ quadtree *quadtree_create() {
 		return NULL;
 	}
 
+	quadtree_node_set_bounds(q->root, x, y, w, h);
+
 	return q;
+}
+
+static int quadtree_node_point_inside(quadtree_node *qn, double x, double y) {
+	if (!qn) {
+		return FALSE;
+	}
+
+	return qn->bounds.x <= x && qn->bounds.x + qn->bounds.w > x
+		&& qn->bounds.y <= y && qn->bounds.y + qn->bounds.h > y;
+}
+
+static int point_inside(double sX, double sY, double sW, double sH, double x,
+		double y) {
+	return sX <= x && sX + sW > x
+		&& sY <= y && sY + sH > y;
+}
+
+static int quadtree_node_has_children(quadtree_node *qn) {
+	if (!qn) {
+		return FALSE;
+	}
+
+	for (int i = 0; i < 4; i++) {
+		if (qn->children[i]) {
+			return TRUE;
+		}
+	}
+
+	return FALSE;
 }
 
 static int quadtree_insert_node(quadtree *q, quadtree_node *qn, void *data,
@@ -77,7 +124,7 @@ static int quadtree_insert_node(quadtree *q, quadtree_node *qn, void *data,
 		return QUADTREE_ERROR;
 	}
 
-	if (llist_is_empty(qn->points)) {
+	if (!quadtree_node_has_children(qn) && llist_is_empty(qn->points)) {
 		quadtree_data *qd = quadtree_data_create(data, size, x, y);
 		if (!qd) {
 			return QUADTREE_ERROR;
@@ -85,12 +132,11 @@ static int quadtree_insert_node(quadtree *q, quadtree_node *qn, void *data,
 		llist_add_to_back(qn->points, qd, sizeof(quadtree_data));
 		free(qd);
 		++q->size;
-		qn->x = x;
-		qn->y = y;
 
 		return QUADTREE_OK;
 	} else {
-		if (qn->x == x && qn->y == y) { // Same point
+		quadtree_data *d = llist_first(qn->points);
+		if (quadtree_data_same_location(d, x, y)) { // Same point
 			quadtree_data *qd = quadtree_data_create(data, size, x, y);
 			if (!qd) {
 				return QUADTREE_ERROR;
@@ -98,31 +144,73 @@ static int quadtree_insert_node(quadtree *q, quadtree_node *qn, void *data,
 			llist_add_to_back(qn->points, qd, sizeof(quadtree_data));
 			free(qd);
 			return QUADTREE_OK;
-		} else if (qn->x < x && qn->y < y) { // Above right
-			if (!qn->children[0]) {
-				qn->children[0] = quadtree_node_create();
+		} else {
+			// Split node
+			double minX = qn->bounds.x;
+			double minY = qn->bounds.y;
+			double midX = qn->bounds.x + qn->bounds.w / 2;
+			double midY = qn->bounds.y + qn->bounds.h / 2;
+			double maxX = qn->bounds.x + qn->bounds.w;
+			double maxY = qn->bounds.y + qn->bounds.h;
+			double xDim[4][2] = {
+				{ midX, maxX - midX },
+				{ minX, midX - minX },
+				{ minX, midX - minX },
+				{ midX, maxX - midX }
+			};
+			double yDim[4][2] = {
+				{ midY, maxY - midY },
+				{ midY, maxY - midY },
+				{ minY, midY - minY },
+				{ minY, midY - minY }
+			};
+
+			quadtree_data *d = llist_first(qn->points);
+
+			for (int i = 0; i < 4; i++) {
+				if (point_inside(xDim[i][0], yDim[i][0], xDim[i][1], yDim[i][1], x, y)
+						|| point_inside(xDim[i][0], yDim[i][0], xDim[i][1], yDim[i][1], d->x, d->y)) {
+					if (!qn->children[i]) {
+						qn->children[i] = quadtree_node_create();
+						quadtree_node_set_bounds(qn->children[i], xDim[i][0], yDim[i][0],
+							xDim[i][1], yDim[i][1]);
+						if (point_inside(xDim[i][0], yDim[i][0], xDim[i][1], yDim[i][0], x,
+								y)) {
+							quadtree_insert_node(q, qn->children[i], data, size, x, y);
+						} else if (point_inside(xDim[i][0], yDim[i][0], xDim[i][1],
+								yDim[i][0], d->x, d->y)) {
+							// Move contained points into child node
+							qn->children[i]->points = qn->points;
+							qn->points = NULL;
+						}
+					}
+				}
 			}
-			quadtree_insert_node(q, qn->children[0], data, size, x, y);
-		} else if (qn->x > x && qn->y < y) { // Above left
-			if (!qn->children[1]) {
-				qn->children[1] = quadtree_node_create();
-			}
-			quadtree_insert_node(q, qn->children[1], data, size, x, y);
-		} else if (qn->x > x && qn->y > y) { // Below left
-			if (!qn->children[2]) {
-				qn->children[2] = quadtree_node_create();
-			}
-			quadtree_insert_node(q, qn->children[2], data, size, x, y);
-		} else if (qn->x < x && qn->y > y) { // Below right
-			if (!qn->children[3]) {
-				qn->children[3] = quadtree_node_create();
-			}
-			quadtree_insert_node(q, qn->children[3], data, size, x, y);
 		}
 	}
 
 	// Shouldn't happen
 	return QUADTREE_ERROR;
+}
+
+static int quadtree_rect_contains(quadtree_rect *r, double x, double y) {
+	if (!r) {
+		return FALSE;
+	}
+
+	return r->x <= x && r->x + r->h > x && r->y <= y && r->y + r->h > y;
+}
+
+static int quadtree_rect_contains_node(quadtree_rect *r, quadtree_node *qn) {
+	if (!r || !qn) {
+		return FALSE;
+	}
+
+	return quadtree_rect_contains(r, qn->bounds.x, qn->bounds.y)
+		|| quadtree_rect_contains(r, qn->bounds.x + qn->bounds.w, qn->bounds.y)
+		|| quadtree_rect_contains(r, qn->bounds.x + qn->bounds.w,
+			qn->bounds.y + qn->bounds.h)
+		|| quadtree_rect_contains(r, qn->bounds.x, qn->bounds.y + qn->bounds.h);
 }
 
 int quadtree_insert(quadtree *q, void *data, size_t size, double x, double y) {
@@ -139,11 +227,16 @@ llist *quadtree_retrieve_node(quadtree *q, quadtree_node *qn,
 		return list;
 	}
 
-	if (r->x <= qn->x && r->x + r->w >= qn->x && r->y <= qn->y && r->y + r->w
-			>= qn->y) {
-		llist_append(list, qn->points);
+	if (qn->points && !llist_is_empty(qn->points)) {
+		quadtree_data *d = llist_first(qn->points);
+		if (quadtree_rect_contains(r, d->x, d->y)) {
+			llist_append(list, qn->points);
+		}
+	} else {
 		for(int i = 0; i < 4; i++) {
-			quadtree_retrieve_node(q, qn->children[i], r, list);
+			if (quadtree_rect_contains_node(r, qn->children[i])) {
+				quadtree_retrieve_node(q, qn->children[i], r, list);
+			}
 		}
 	}
 

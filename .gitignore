@@ -1,3 +1,5 @@
 *.o
 *.dSYM
 .DS_Store
+__tests__/llist-test
+__tests__/quadtree-test

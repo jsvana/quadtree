@@ -56,6 +56,7 @@ void llist_add_to_back(llist *l, void *data, size_t size) {
 		// TODO: Handle failure
 		return;
 	}
+	memcpy(ln->data, data, size);
 	ln->size = size;
 
 	llist_node *prev = l->tail->prev;
@@ -78,6 +79,7 @@ void llist_add_to_front(llist *l, void *data, size_t size) {
 		// TODO: Handle failure
 		return;
 	}
+	memcpy(ln->data, data, size);
 	ln->size = size;
 
 	llist_node *next = l->head->next;
@@ -101,6 +103,20 @@ static void llist_node_free(llist_node *ln) {
 	free(ln);
 }
 
+void llist_iter_prep(llist *l) {
+	if (!l || llist_is_empty(l)) {
+		return;
+	}
+
+	llist_node *ln = l->head->next;
+	while (ln && ln != l->tail) {
+		if (ln->next != l->tail) {
+			ln->inext = ln->next;
+		}
+		ln = ln->inext;
+	}
+}
+
 void llist_append(llist *dest, llist *other) {
 	if (!dest || !other || llist_is_empty(other)) {
 		return;
@@ -109,10 +125,36 @@ void llist_append(llist *dest, llist *other) {
 	llist_node *ln = dest->tail->prev;
 	ln->inext = other->head->next;
 	ln = ln->inext;
-	while (ln != other->tail) {
-		ln->inext = ln->next;
+	while (ln && ln != other->tail) {
+		if (ln->next != other->tail) {
+			ln->inext = ln->next;
+		}
 		ln = ln->inext;
 	}
+}
+
+void *llist_first(llist *l) {
+	if (!l) {
+		return NULL;
+	}
+
+	return l->head->next->data;
+}
+
+void *llist_last(llist *l) {
+	if (!l) {
+		return NULL;
+	}
+
+	return l->tail->prev->data;
+}
+
+llist_node *llist_iter(llist *l) {
+	if (!l || llist_is_empty(l)) {
+		return NULL;
+	}
+
+	return l->head->next;
 }
 
 int llist_size(llist *l) {

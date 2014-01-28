@@ -2,19 +2,25 @@ CC=clang
 
 CFLAGS=-ggdb
 
-PROG=__tests__/quadtree-test
-OBJS=__tests__/quadtree-test.o quadtree.o llist.o
+Q_PROG=__tests__/quadtree-test
+Q_OBJS=__tests__/quadtree-test.o quadtree.o llist.o
+L_PROG=__tests__/llist-test
+L_OBJS=__tests__/llist-test.o llist.o
 
-all: $(PROG)
+all: $(L_PROG) $(Q_PROG)
 
-$(PROG): $(OBJS)
-	$(CC) -o $(PROG) $(OBJS)
+$(L_PROG): $(L_OBJS)
+	$(CC) -o $(L_PROG) $(L_OBJS)
+
+$(Q_PROG): $(Q_OBJS)
+	$(CC) -o $(Q_PROG) $(Q_OBJS)
 
 %.o: %.c
 	$(CC) -c $(CFLAGS) $< -o $@ $(LIBS)
 
-test: $(PROG)
-	./$(PROG)
+test: $(L_PROG) $(Q_PROG)
+	./$(L_PROG)
+	./$(Q_PROG)
 
 clean:
-	rn -f $(PROG) $(OBJS)
+	rn -f $(L_PROG) $(Q_PROG) $(L_OBJS) $(Q_OBJS)

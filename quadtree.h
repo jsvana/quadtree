@@ -39,8 +39,7 @@ struct quadtree_data {
 typedef struct quadtree_node quadtree_node;
 struct quadtree_node {
 	llist *points;
-	double x;
-	double y;
+	quadtree_rect bounds;
 	quadtree_node **children;
 };
 
